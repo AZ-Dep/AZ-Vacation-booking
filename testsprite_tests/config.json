@@ -1,0 +1,13 @@
+{
+  "projectType": "frontend",
+  "localPort": 8000,
+  "testScope": "codebase",
+  "needLogin": true,
+  "credentials": {
+    "username": "ANT",
+    "password": "110166"
+  },
+  "locales": ["th", "en"],
+  "entryPoint": "index.html",
+  "testSuite": "test.html"
+}

@@ -1,0 +1,6 @@
+- [x] Update index.html (Add 5th rule to sidebar guidelines card)
+- [x] Update Code.gs (Add getUserYearBookingCount and count validation check in submitBooking)
+- [x] Update app.js (Add checkUserYearBookingCount and integrate it with confirmation modal UX)
+- [x] Sync app.html from app.js
+- [x] Verify locally using server.ps1 simulation
+- [x] Update walkthrough.md documentation

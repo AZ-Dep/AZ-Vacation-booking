@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AZ Vacation booking</title>
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <script>
+        // ==========================================================
+        // CONFIGURATION VARIABLES (Google Drive Direct Links & GAS API)
+        // ==========================================================
+        const LOGO_URL = "Logo bafs Original.png"; // Replace with your Google Drive direct link
+        const BACKGROUND_URL = "20220221_070326.jpg"; // Replace with your Google Drive direct link
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyHpsRN5z9Dz3Ey0zPZW1OYYGQ0Ru4gA7NycmnNdGbSgGC3R4j0DbGsd65QwBarkv0/exec";
+    </script>
+
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Google Apps Script CSS inclusion (Used when deployed in GAS) -->
+    <?!= include('style'); ?>
+</head>
+
+<body>
+    <!-- Background Image Wrapper -->
+    <div class="bg-wrapper"></div>
+
+    <!-- 1. LOGIN OVERLAY -->
+    <div id="login-overlay" class="overlay active">
+        <div class="glass-card login-card animate-fade-in">
+            <div class="login-header">
+                <img id="login-logo-img" src="Logo bafs Original.png" alt="BAFS Logo" class="login-logo">
+                <h2>AZ Vacation booking</h2>
+                <p class="login-subtitle">กรุณา Login เข้าระบบ</p>
+            </div>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-username">ชื่อย่อพนักงาน (Initial Name)</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="login-username" required placeholder="เช่น SYO, KAU, WJP, CHL"
+                            autocomplete="username">
+                        <span class="input-icon">👤</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">รหัสพนักงาน (Employee no.)</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="login-password" required placeholder="เช่น 110166"
+                            autocomplete="current-password">
+                        <span class="input-icon">🔑</span>
+                    </div>
+                    <div id="login-error" class="error-text hidden">⚠️ ข้อมูลเข้าสู่ระบบไม่ถูกต้อง
+                        หรือไม่พบในตารางพนักงาน</div>
+                </div>
+                <button type="submit" id="btn-login-submit" class="btn btn-primary btn-block">เข้าสู่ระบบ</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. MAIN APPLICATION -->
+    <div id="app-container" class="app-layout hidden">
+        <!-- HEADER -->
+        <header class="main-header glass-card">
+            <div class="header-logo-section">
+                <img id="app-logo-img" src="Logo bafs Original.png" alt="BAFS Logo" class="app-logo">
+                <div class="header-title-wrapper">
+                    <h1>AZ Vacation booking</h1>
+                    <span class="sub-title">ระบบจองวันลาพักร้อนล่วงหน้า</span>
+                </div>
+            </div>
+
+            <!-- Testing Override Tool & User Profile -->
+            <div class="header-controls">
+                <div class="mock-date-container">
+                    <label for="mock-today">📅 จำลองวันที่ปัจจุบัน:</label>
+                    <input type="date" id="mock-today" class="mock-date-input">
+                </div>
+
+                <div class="user-profile-widget">
+                    <div class="avatar">👤</div>
+                    <div class="user-info">
+                        <span id="user-initial-display" class="user-email">Guest</span>
+                        <span id="user-name-display" class="user-role">ผู้ใช้งานทั่วไป</span>
+                    </div>
+                    <button id="logout-btn" class="btn-logout" title="ออกจากระบบ">Logout ↪</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- NAVIGATION TABS -->
+        <nav class="app-nav-tabs">
+            <button id="nav-tab-dashboard" class="nav-tab-btn active" onclick="switchNavTab('dashboard')">
+                <span class="nav-icon">📊</span> หน้าหลัก Dashboard
+            </button>
+            <button id="nav-tab-calendar" class="nav-tab-btn" onclick="switchNavTab('calendar')">
+                <span class="nav-icon">📅</span> ตารางปฏิทินจองพักร้อน
+            </button>
+        </nav>
+
+        <!-- DASHBOARD VIEW CONTAINER -->
+        <div id="view-dashboard" class="view-container animate-fade-in">
+            <!-- Top Stat Cards -->
+            <div class="dashboard-stats-grid">
+                <!-- Card 1: Quota Status -->
+                <div class="glass-card stat-card quota-stat-card">
+                    <div class="stat-icon-bg">📊</div>
+                    <div class="stat-info">
+                        <span class="stat-label">โควตาจองปี 2027</span>
+                        <div class="stat-value-wrapper">
+                            <span id="dash-quota-used" class="stat-value">0</span>
+                            <span class="stat-total">/ 5 ช่วงเวลา</span>
+                        </div>
+                        <div class="quota-progress-container">
+                            <div id="dash-quota-bar" class="quota-progress-bar" style="width: 0%;"></div>
+                        </div>
+                        <span id="dash-quota-text" class="stat-subtext">คงเหลือ 5 ช่วงเวลา</span>
+                    </div>
+                </div>
+
+                <!-- Card 2: Upcoming Vacation -->
+                <div class="glass-card stat-card upcoming-stat-card">
+                    <div class="stat-icon-bg">✈️</div>
+                    <div class="stat-info">
+                        <span class="stat-label">รายการพักร้อนถัดไป</span>
+                        <span id="dash-upcoming-date" class="stat-value-text">ไม่มีรายการพักร้อนที่กำลังจะมาถึง</span>
+                        <span id="dash-upcoming-sub" class="stat-subtext">วางแผนพักร้อนสำหรับปี 2027 ได้ที่ตารางจอง</span>
+                    </div>
+                </div>
+
+                <!-- Card 3: User Info Badge -->
+                <div class="glass-card stat-card profile-stat-card">
+                    <div class="stat-icon-bg">👤</div>
+                    <div class="stat-info">
+                        <span class="stat-label">ข้อมูลผู้ปฏิบัติงาน</span>
+                        <span id="dash-emp-name" class="stat-value-text">-</span>
+                        <span id="dash-emp-details" class="stat-subtext">Operator | Team - | Concourse -</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Action Banner -->
+            <div id="dash-action-banner" class="glass-card action-banner">
+                <div class="banner-left">
+                    <h4>📅 ต้องการเลือกวันลาพักร้อนเพิ่มเติม?</h4>
+                    <p>ไปที่ตารางจองเพื่อเลือกช่วงวันที่ต้องการสำหรับปี ค.ศ. 2027</p>
+                </div>
+                <button class="btn btn-primary" onclick="switchNavTab('calendar')">📅 เปิดตารางจองพักร้อน</button>
+            </div>
+
+            <!-- Personal Activity History Section -->
+            <div id="dash-user-history-section" class="glass-card history-section-card">
+                <div class="history-header">
+                    <h3>📜 ประวัติรายการจองพักร้อนของฉัน</h3>
+                    <button class="btn btn-outline btn-sm" onclick="loadDashboardData()">🔄 รีเฟรชข้อมูล</button>
+                </div>
+
+                <div id="dashboard-history-loading" class="placeholder-card hidden">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 10px;">กำลังโหลดประวัติการจอง...</p>
+                </div>
+
+                <div id="dashboard-history-empty" class="empty-state-box hidden">
+                    <span class="empty-icon">🏖️</span>
+                    <p>ยังไม่มีประวัติการจองวันลาพักร้อนสำหรับปี 2027</p>
+                </div>
+
+                <div class="table-responsive">
+                    <table id="dash-history-table" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>วันที่ทำรายการ</th>
+                                <th>ช่วงวันพักร้อน</th>
+                                <th>เดือน/ปี</th>
+                                <th>Zone</th>
+                                <th>ประเภทการจอง</th>
+                                <th>สถานะ</th>
+                                <th>จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dash-history-tbody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Admin Master Log Section (Visible only to Admin) -->
+            <div id="dash-admin-section" class="glass-card history-section-card admin-border hidden" style="margin-top: 25px;">
+                <div class="history-header">
+                    <h3>👑 ประวัติการจองของพนักงานทั้งหมด (ผู้ดูแลระบบ)</h3>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <select id="admin-team-filter" style="padding:6px 12px; border-radius:6px; background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.2); font-size:13px; cursor:pointer;" onchange="filterAdminBookings()">
+                            <option value="ALL">ทุกทีม</option>
+                            <option value="A">Team A</option>
+                            <option value="B">Team B</option>
+                            <option value="C">Team C</option>
+                            <option value="D">Team D</option>
+                            <option value="E">Team E</option>
+                            <option value="X">Team X</option>
+                        </select>
+                        <span class="admin-badge">Admin Access</span>
+                    </div>
+                </div>
+                <div id="admin-history-loading" style="text-align:center; padding:20px; color:#94a3b8;">
+                    <span>⏳ กำลังโหลดข้อมูลจากตาราง...</span>
+                </div>
+                <div id="admin-history-empty" class="hidden" style="text-align:center; padding:25px; color:#94a3b8;">
+                    <p>📋 ยังไม่มีประวัติการจองวันพักร้อนในระบบ</p>
+                </div>
+                <div id="admin-history-summary" class="hidden" style="padding:10px 15px; margin-bottom:10px; display:flex; gap:15px; flex-wrap:wrap; font-size:13px; color:#94a3b8;">
+                    <span>📊 จำนวนรายการทั้งหมด: <strong id="admin-total-count" style="color:#60a5fa;">0</strong></span>
+                    <span>🏢 Concourse C: <strong id="admin-c-count" style="color:#22c55e;">0</strong></span>
+                    <span>🏢 Concourse F: <strong id="admin-f-count" style="color:#f59e0b;">0</strong></span>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ลำดับ</th>
+                                <th>พนักงาน</th>
+                                <th>ตำแหน่ง/ทีม</th>
+                                <th>Concourse</th>
+                                <th>เดือน/ปี</th>
+                                <th>ช่วงวัน</th>
+                                <th>สถานะ</th>
+                                <th>ดำเนินการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dash-admin-tbody">
+                            <!-- Populated dynamically for Admin -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- CALENDAR VIEW CONTAINER -->
+        <div id="view-calendar" class="view-container hidden">
+            <!-- APP CONTENT LAYOUT -->
+            <div class="main-content">
+            <!-- SIDEBAR: Rules & Selection Form -->
+            <aside class="sidebar-section">
+
+                <!-- Rules Card -->
+                <div class="glass-card rules-card">
+                    <h3>📌 ข้อกำหนดการจองวันลาพักร้อน</h3>
+                    <ul class="rules-list">
+                        <li>
+                            <span class="rule-num">1</span>
+                            <p>Operator ทำการจองได้ทีมละ 2 คนต่อช่อง (Concourse C 1 คน, Concourse F 1 คน)</p>
+                        </li>
+                        <li>
+                            <span class="rule-num">2</span>
+                            <p>ทำการจองพักร้อนของเดือนถัดไปล่วงหน้า <strong>ภายในวันที่ 10 ของเดือน</strong></p>
+                        </li>
+                        <li>
+                            <span class="rule-num">3</span>
+                            <p>สามารถจองพักร้อนล่วงหน้าก่อนได้ทุกเดือน</p>
+                        </li>
+                        <li>
+                            <span class="rule-num">4</span>
+                            <p>สามารถแก้ไขการจองพักร้อนล่วงหน้า <strong>ภายในวันที่ 10 ก่อนเดือนที่ทำการจองไว้</strong></p>
+                        </li>
+                        <li>
+                            <span class="rule-num">5</span>
+                            <p>ใน 1 ปี พนักงานสามารถจองพักร้อนได้มากสุด <strong>5 ช่วงเวลา</strong></p>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Profile Info Card -->
+                <div class="glass-card booking-form-card">
+                    <h3>👤 ข้อมูลผู้จอง (Logged-in Profile)</h3>
+                    <div class="profile-details-grid">
+                        <div class="profile-field">
+                            <span class="p-label">ชื่อย่อ (Initial Name):</span>
+                            <span id="profile-initial" class="p-val">-</span>
+                        </div>
+                        <div class="profile-field">
+                            <span class="p-label">ชื่อภาษาอังกฤษ:</span>
+                            <span id="profile-english-name" class="p-val">-</span>
+                        </div>
+                        <div class="profile-field">
+                            <span class="p-label">ตำแหน่ง (Position):</span>
+                            <span id="profile-position" class="p-val">-</span>
+                        </div>
+                        <div class="profile-field">
+                            <span class="p-label">ทีม (Team):</span>
+                            <span id="profile-team" class="p-val">-</span>
+                        </div>
+                        <div id="profile-concourse-field" class="profile-field hidden">
+                            <span class="p-label">Concourse:</span>
+                            <span id="profile-concourse" class="p-val">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Booking Selectors Card -->
+                <div class="glass-card booking-form-card">
+                    <h3>📅 เลือกเดือนและปีที่ต้องการพักร้อน</h3>
+
+                    <div class="date-selection-grid">
+                        <div class="form-group">
+                            <label for="select-month">เดือนพักร้อน</label>
+                            <select id="select-month" class="form-select">
+                                <option value="0">JAN</option>
+                                <option value="1">FEB</option>
+                                <option value="2">MAR</option>
+                                <option value="3">APR</option>
+                                <option value="4">MAY</option>
+                                <option value="5">JUN</option>
+                                <option value="6">JUL</option>
+                                <option value="7">AUG</option>
+                                <option value="8">SEP</option>
+                                <option value="9">OCT</option>
+                                <option value="10">NOV</option>
+                                <option value="11">DEC</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="select-year">ปี</label>
+                            <select id="select-year" class="form-select">
+                                <!-- Dynamically populated by JS -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Admin Team Selector in Sidebar (Hidden for regular employees) -->
+                    <div id="sidebar-admin-team-wrapper" class="hidden" style="margin-top: 12px;">
+                        <label for="sidebar-admin-team-select" style="font-size: 13px; font-weight: 600; color: #ffc107; display: block; margin-bottom: 6px;">
+                            👑 เลือกทีมพนักงาน (Admin):
+                        </label>
+                        <select id="sidebar-admin-team-select" class="form-select" style="border: 1px solid rgba(255,193,7,0.4);">
+                            <option value="A">Team A</option>
+                            <option value="B">Team B</option>
+                            <option value="C">Team C</option>
+                            <option value="D">Team D</option>
+                            <option value="E">Team E</option>
+                            <option value="X">Team X</option>
+                        </select>
+                    </div>
+                </div>
+
+            </aside>
+
+            <!-- MAIN GRID: Vacation Calendar (Vertical Layout for Mobile) -->
+            <main class="calendar-section">
+                <!-- Loading indicator overlay inside calendar section -->
+                <div id="calendar-loading" class="glass-card placeholder-card hidden">
+                    <div class="placeholder-content">
+                        <div class="spinner"></div>
+                        <p style="margin-top: 15px; font-weight: 500;">กำลังโหลดข้อมูลจาก Google Sheets...</p>
+                    </div>
+                </div>
+
+                <!-- Calendar Content -->
+                <div id="calendar-content" class="calendar-content-wrapper">
+                    <div class="glass-card calendar-card">
+                        <div class="calendar-header">
+                            <div class="calendar-info">
+                                <h2 id="calendar-title-display">ตารางพักร้อนล่วงหน้า</h2>
+                                <p class="helper-text">💡 วิธีการจอง: เลือกช่องว่างในส่วน Concourse
+                                    ของทีมท่านบนช่วงวันที่ต้องการจอง จากนั้นกดปุ่มด้านล่างเพื่อยืนยัน</p>
+                            </div>
+
+                            <!-- Calendar Control Toolbar: Month Dropdown, Admin Team Switcher & Small Excel Export (Visible ONLY to Admin) -->
+                            <div id="calendar-toolbar" class="calendar-toolbar hidden" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 15px; margin-bottom: 15px; padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px;">
+                                <!-- Left: Month & Year Dropdowns -->
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label for="toolbar-month-select" style="font-size: 12px; font-weight: 500; color: #94a3b8;">📅 เลือกเดือน/ปี:</label>
+                                    <select id="toolbar-month-select" style="padding: 4px 8px; border-radius: 6px; background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; font-size: 12px; cursor: pointer;">
+                                        <option value="0">มกราคม (JAN)</option>
+                                        <option value="1">กุมภาพันธ์ (FEB)</option>
+                                        <option value="2">มีนาคม (MAR)</option>
+                                        <option value="3">เมษายน (APR)</option>
+                                        <option value="4">พฤษภาคม (MAY)</option>
+                                        <option value="5">มิถุนายน (JUN)</option>
+                                        <option value="6">กรกฎาคม (JUL)</option>
+                                        <option value="7">สิงหาคม (AUG)</option>
+                                        <option value="8">กันยายน (SEP)</option>
+                                        <option value="9">ตุลาคม (OCT)</option>
+                                        <option value="10">พฤศจิกายน (NOV)</option>
+                                        <option value="11">ธันวาคม (DEC)</option>
+                                    </select>
+                                    <select id="toolbar-year-select" style="padding: 4px 8px; border-radius: 6px; background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; font-size: 12px; cursor: pointer;">
+                                        <!-- Populated dynamically -->
+                                    </select>
+                                </div>
+
+                                <!-- Center: Admin Team Switcher (Visible only when logged in as Admin) -->
+                                <div id="admin-calendar-team-wrapper" class="hidden" style="display: flex; align-items: center; gap: 8px;">
+                                    <label for="calendar-admin-team-select" style="font-size: 12px; font-weight: 500; color: #d97706;">👑 เลือกทีม (Admin):</label>
+                                    <select id="calendar-admin-team-select" style="padding: 4px 8px; border-radius: 6px; background: #ffffff; color: #0f172a; border: 1px solid #d97706; font-size: 12px; cursor: pointer;">
+                                        <option value="A">Team A</option>
+                                        <option value="B">Team B</option>
+                                        <option value="C">Team C</option>
+                                        <option value="D">Team D</option>
+                                        <option value="E">Team E</option>
+                                        <option value="X">Team X</option>
+                                    </select>
+                                </div>
+
+                                <!-- Right: Small Export to Excel Button -->
+                                <div>
+                                    <button type="button" class="btn btn-success" style="background: linear-gradient(135deg, #107c41, #1f9a55); border: none; font-weight: 500; font-size: 11px; padding: 4px 10px; border-radius: 5px; gap: 4px; display: inline-flex; align-items: center; cursor: pointer;" onclick="exportBookingsToExcel()">
+                                        📊 Export Excel (.xls)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- LEGEND REMOVED PER USER REQUEST -->
+                        </div>
+
+                        <!-- VERTICAL LIST OF SLOTS -->
+                        <div class="vertical-slots-wrapper">
+                            <div id="operator-slots-container" class="table-section-wrapper">
+                                <div id="operator-slots-list" class="slots-list">
+                                    <!-- Rendered dynamically -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Bar -->
+                        <div class="calendar-actions">
+                            <div class="selected-summary" id="booking-summary-text">
+                                กรุณาเลือกช่วงวันในรายการเพื่อทำการจอง...
+                            </div>
+                            <button id="btn-confirm-booking" class="btn btn-success btn-large" disabled>
+                                ⚡ ยืนยันการจองพักร้อน
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </main>
+        </div>
+        </div>
+    </div>
+
+    <!-- 3. BOOKING CONFIRMATION MODAL -->
+    <div id="booking-modal" class="modal-overlay hidden">
+        <div class="glass-card modal-card animate-slide-up">
+            <div class="modal-header">
+                <h3>ยืนยันข้อมูลการจองพักร้อน</h3>
+                <button class="btn-close-modal" onclick="closeModal('booking-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="confirm-info-list">
+                    <div class="confirm-item">
+                        <span class="label">ชื่อพนักงาน:</span>
+                        <span id="confirm-emp-name" class="val">-</span>
+                    </div>
+                    <div class="confirm-item">
+                        <span class="label">ตำแหน่งงาน:</span>
+                        <span id="confirm-position" class="val">-</span>
+                    </div>
+                    <div class="confirm-item">
+                        <span class="label">ทีม:</span>
+                        <span id="confirm-team" class="val">-</span>
+                    </div>
+                    <div class="confirm-item">
+                        <span class="label">ช่วงวันที่เลือก:</span>
+                        <span id="confirm-date" class="val">-</span>
+                    </div>
+                    <div class="confirm-item" id="confirm-concourse-row">
+                        <span class="label">Concourse:</span>
+                        <span id="confirm-concourse" class="val">-</span>
+                    </div>
+                </div>
+
+                <!-- Admin Booking On Behalf Field -->
+                <div id="admin-booking-fields" class="admin-booking-container hidden" style="margin-top: 15px; padding: 12px; background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 8px;">
+                    <label for="admin-target-initial" style="font-size: 13px; font-weight: 600; color: #b45309; display: block; margin-bottom: 6px;">
+                        👑 ระบุชื่อย่อพนักงานที่ต้องการจองแทน (Initial Name):
+                    </label>
+                    <input type="text" id="admin-target-initial" placeholder="เช่น PDP, KSM, SYO, WJP" style="width: 100%; padding: 8px 12px; border-radius: 6px; background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; font-size: 14px; text-transform: uppercase;">
+                </div>
+
+                <div id="modal-warning-box" class="warning-alert-box hidden"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('booking-modal')">ยกเลิก</button>
+                <button id="btn-modal-submit" class="btn btn-success">ยืนยันการจอง</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. EDIT/CANCEL MODAL -->
+    <div id="edit-modal" class="modal-overlay hidden">
+        <div class="glass-card modal-card animate-slide-up">
+            <div class="modal-header">
+                <h3>⚙ จัดการรายการจองพักร้อน</h3>
+                <button class="btn-close-modal" onclick="closeModal('edit-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>คุณต้องการยกเลิกรายการจองนี้ใช่หรือไม่?</p>
+                <div class="confirm-info-list">
+                    <div class="confirm-item">
+                        <span class="label">ผู้จอง:</span>
+                        <span id="edit-emp-name" class="val">-</span>
+                    </div>
+                    <div class="confirm-item">
+                        <span class="label">ตำแหน่ง/ทีม:</span>
+                        <span id="edit-details" class="val">-</span>
+                    </div>
+                    <div class="confirm-item">
+                        <span class="label">วันที่จอง:</span>
+                        <span id="edit-date" class="val">-</span>
+                    </div>
+                    <div class="confirm-item" id="edit-concourse-row">
+                        <span class="label">Concourse:</span>
+                        <span id="edit-concourse" class="val">-</span>
+                    </div>
+                </div>
+                <div id="edit-warning-box" class="warning-alert-box hidden"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('edit-modal')">ปิด</button>
+                <button id="btn-modal-delete" class="btn btn-danger">🗑 ยกเลิกการจองนี้</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. SUCCESS POPUP -->
+    <div id="success-popup" class="success-popup-overlay hidden">
+        <div class="success-popup-card animate-scale-up">
+            <div class="success-icon-wrapper">
+                <div class="success-icon-svg">
+                    <svg viewBox="0 0 52 52">
+                        <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none" />
+                        <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
+                    </svg>
+                </div>
+            </div>
+            <h2>ทำการจองสำเร็จ!</h2>
+            <p id="success-message-text">ระบบได้ทำการบันทึกข้อมูลการลาพักร้อนเรียบร้อยแล้ว</p>
+            <button class="btn btn-success btn-block" onclick="closeSuccessPopup()">ตกลง</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+
+    <!-- Google Apps Script JS inclusion (Used when deployed in GAS) -->
+    <?!= include('app'); ?>
+</body>
+
+</html>

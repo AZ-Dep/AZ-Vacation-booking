@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AZ Vacation Booking - Automated Test Suite</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --primary: #1e88e5;
+            --glass-bg: rgba(18, 30, 58, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #ffffff;
+            --text-muted: #8fa0ba;
+            --font-sans: 'Outfit', 'Sarabun', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            color: var(--text-main);
+            background-color: #050a14;
+            background-image: url('20220221_070326.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(15, 32, 67, 0.75) 0%, rgba(5, 10, 20, 0.95) 100%);
+            z-index: -1;
+        }
+
+        .test-container {
+            width: 800px;
+            max-width: 100%;
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .summary-box {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 30px;
+            border: 1px dashed var(--glass-border);
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-item .num {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .summary-item.passed .num { color: var(--success); }
+        .summary-item.failed .num { color: var(--danger); }
+        .summary-item.total .num { color: var(--primary); }
+
+        .summary-item .lbl {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .test-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .test-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 16px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            transition: background 0.2s;
+        }
+
+        .test-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .test-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            text-align: left;
+        }
+
+        .test-name {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .test-desc {
+            font-size: 12.5px;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .test-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .test-status.passed {
+            background-color: rgba(46, 204, 113, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+
+        .test-status.failed {
+            background-color: rgba(231, 76, 60, 0.15);
+            color: var(--danger);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+        }
+
+        .footer-actions {
+            margin-top: 30px;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .btn {
+            font-family: var(--font-sans);
+            padding: 10px 24px;
+            font-weight: 600;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #1565c0;
+        }
+
+        .btn-secondary {
+            background-color: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid var(--glass-border);
+        }
+        .btn-secondary:hover {
+            background-color: rgba(255,255,255,0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="test-container">
+        <div class="header">
+            <h1>🧪 AZ Vacation Booking Test Suite</h1>
+            <p>ระบบตรวจสอบความถูกต้องของฟังก์ชันจองลาพักร้อนอัตโนมัติ (โครงสร้างอัปเดตแยกตาราง)</p>
+        </div>
+
+        <div class="summary-box">
+            <div class="summary-item total">
+                <div class="num" id="total-tests">0</div>
+                <div class="lbl">การทดสอบทั้งหมด</div>
+            </div>
+            <div class="summary-item passed">
+                <div class="num" id="passed-tests">0</div>
+                <div class="lbl">ผ่าน (Passed)</div>
+            </div>
+            <div class="summary-item failed">
+                <div class="num" id="failed-tests">0</div>
+                <div class="lbl">ล้มเหลว (Failed)</div>
+            </div>
+        </div>
+
+        <div class="test-list" id="test-list-container">
+            <!-- Test cases will load here dynamically -->
+        </div>
+
+        <div class="footer-actions">
+            <button class="btn btn-primary" onclick="runAllTests()">⚡ รันการทดสอบอีกครั้ง</button>
+            <a href="index.html" class="btn btn-secondary">🏠 เข้าสู่หน้าหลักแอปพลิเคชัน</a>
+        </div>
+    </div>
+
+    <script>
+        // Copy of rules logic from app.js for isolated unit testing
+        const TEAMS_BY_POSITION = {
+            "Foreman": ["Alpha", "Charlee", "Delta", "Echo"],
+            "Operator": ["Alpha", "Bravo", "Charlee", "Delta", "Echo", "Xray"]
+        };
+
+        function checkBookingTimelineAllowed(mockTodayDate, targetDateStr) {
+            const parts = targetDateStr.split('-');
+            const targetYear = parseInt(parts[0]);
+            const targetMonth = parseInt(parts[1]) - 1; // 0-indexed
+            
+            // Create the deadline: 10th of the month prior to the target booking month
+            let deadlineYear = targetYear;
+            let deadlineMonth = targetMonth - 1;
+            if (deadlineMonth < 0) {
+                deadlineMonth = 11;
+                deadlineYear--;
+            }
+            
+            const todayYear = mockTodayDate.getFullYear();
+            const todayMonth = mockTodayDate.getMonth();
+            const todayDay = mockTodayDate.getDate();
+            
+            if (todayYear < deadlineYear) return true;
+            if (todayYear > deadlineYear) return false;
+            
+            if (todayMonth < deadlineMonth) return true;
+            if (todayMonth > deadlineMonth) return false;
+            
+            return todayDay <= 10;
+        }
+
+        function validateBafsEmail(email) {
+            return email.toLowerCase().endsWith("@bafs.co.th");
+        }
+
+        function isTeamAvailableForPosition(position, team) {
+            const teams = TEAMS_BY_POSITION[position] || [];
+            return teams.includes(team);
+        }
+
+        // --- TEST RUNNER LOGIC ---
+        const testCases = [
+            // 1. Email Format Tests
+            {
+                name: "Email Validation: Valid BAFS Email",
+                desc: "ตรวจสอบว่าอีเมลที่ลงท้ายด้วย @bafs.co.th ผ่านการตรวจสอบสำเร็จ",
+                run: () => {
+                    const result = validateBafsEmail("test.user@bafs.co.th");
+                    return { success: result === true, actual: result, expected: true };
+                }
+            },
+            {
+                name: "Email Validation: Invalid Gmail",
+                desc: "ตรวจสอบว่าอีเมลอื่น ๆ เช่น @gmail.com ไม่ได้รับอนุญาต",
+                run: () => {
+                    const result = validateBafsEmail("test@gmail.com");
+                    return { success: result === false, actual: result, expected: false };
+                }
+            },
+            
+            // 2. Timeline Constraints
+            {
+                name: "Timeline: Booking next month before the 10th (Allowed)",
+                desc: "จองพักร้อนเดือน กรกฎาคม 2026 โดยจำลองวันที่ปัจจุบันคือ 9 มิถุนายน 2026 ผลลัพธ์: ต้องจองได้",
+                run: () => {
+                    const mockToday = new Date("2026-06-09");
+                    const targetDateStr = "2026-07-15";
+                    const result = checkBookingTimelineAllowed(mockToday, targetDateStr);
+                    return { success: result === true, actual: result, expected: true };
+                }
+            },
+            {
+                name: "Timeline: Booking next month after the 10th (Blocked)",
+                desc: "จองพักร้อนเดือน กรกฎาคม 2026 โดยจำลองวันที่ปัจจุบันคือ 11 มิถุนายน 2026 ผลลัพธ์: ต้องถูกบล็อก",
+                run: () => {
+                    const mockToday = new Date("2026-06-11");
+                    const targetDateStr = "2026-07-15";
+                    const result = checkBookingTimelineAllowed(mockToday, targetDateStr);
+                    return { success: result === false, actual: result, expected: false };
+                }
+            },
+            
+            // 3. Role-based Team Restrictions (New Requirement)
+            {
+                name: "Roles: Team Alpha has Foreman (Allowed)",
+                desc: "ตรวจสอบความสอดคล้องตามเงื่อนไขว่า ทีม Alpha ต้องมีสิทธิ์เลือกตำแหน่ง Foreman",
+                run: () => {
+                    const result = isTeamAvailableForPosition("Foreman", "Alpha");
+                    return { success: result === true, actual: result, expected: true };
+                }
+            },
+            {
+                name: "Roles: Team Bravo does NOT have Foreman (Blocked)",
+                desc: "ตรวจสอบความสอดคล้องตามเงื่อนไขว่า ทีม Bravo ต้องไม่มีตำแหน่ง Foreman (ซ่อนหรือเลือกไม่ได้)",
+                run: () => {
+                    const result = isTeamAvailableForPosition("Foreman", "Bravo");
+                    return { success: result === false, actual: result, expected: false };
+                }
+            },
+            {
+                name: "Roles: Team Xray does NOT have Foreman (Blocked)",
+                desc: "ตรวจสอบความสอดคล้องตามเงื่อนไขว่า ทีม Xray ต้องไม่มีตำแหน่ง Foreman (ซ่อนหรือเลือกไม่ได้)",
+                run: () => {
+                    const result = isTeamAvailableForPosition("Foreman", "Xray");
+                    return { success: result === false, actual: result, expected: false };
+                }
+            },
+            {
+                name: "Roles: Team Xray has Operator (Allowed)",
+                desc: "ตรวจสอบความสอดคล้องตามเงื่อนไขว่า ทีม Xray ต้องสามารถเลือกตำแหน่ง Operator ได้",
+                run: () => {
+                    const result = isTeamAvailableForPosition("Operator", "Xray");
+                    return { success: result === true, actual: result, expected: true };
+                }
+            }
+        ];
+
+        function runAllTests() {
+            const container = document.getElementById("test-list-container");
+            container.innerHTML = "";
+
+            let passed = 0;
+            let failed = 0;
+
+            testCases.forEach((tc) => {
+                const res = tc.run();
+                const card = document.createElement("div");
+                card.className = "test-card";
+
+                const isPassed = res.success;
+                if (isPassed) passed++; else failed++;
+
+                card.innerHTML = `
+                    <div class="test-info">
+                        <div class="test-name">${tc.name}</div>
+                        <div class="test-desc">${tc.desc}</div>
+                        <div style="font-size: 11px; margin-top: 5px; color: var(--text-muted)">
+                            ค่าที่ได้รับ: <code>${res.actual}</code> | ค่าที่คาดหวัง: <code>${res.expected}</code>
+                        </div>
+                    </div>
+                    <span class="test-status ${isPassed ? 'passed' : 'failed'}">
+                        ${isPassed ? '✓ PASSED' : '✗ FAILED'}
+                    </span>
+                `;
+                container.appendChild(card);
+            });
+
+            document.getElementById("total-tests").textContent = testCases.length;
+            document.getElementById("passed-tests").textContent = passed;
+            document.getElementById("failed-tests").textContent = failed;
+        }
+
+        window.onload = runAllTests;
+    </script>
+</body>
+</html>
