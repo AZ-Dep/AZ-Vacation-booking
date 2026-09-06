@@ -2258,6 +2258,11 @@ function cancelBookingFromDashboardAdmin(btnElement, empTeam, monthYearStr, date
 
     callGasApi("cancelBooking", [posParam, empTeam, monthIndex, yearVal, dateRange, concourse, initParam])
         .then(() => {
+            const mutationKey = getSlotMutationKey(empTeam || (currentUser && currentUser.team) || "A", yearVal, monthIndex, dateRange, concourse);
+            window._recentSlotMutations[mutationKey] = {
+                initialName: "",
+                expiresAt: Date.now() + 25000
+            };
             alert("ยกเลิกการจองของ " + empName + " เรียบร้อยแล้ว");
             notifyDataChanged();
             loadDashboardData();
@@ -2296,6 +2301,11 @@ function cancelBookingFromDashboard(btnElement, monthYearStr, dateRange, concour
 
     callGasApi("cancelBooking", [posParam, currentUser.team, monthIndex, yearVal, dateRange, concourse, initParam])
         .then(() => {
+            const mutationKey = getSlotMutationKey(currentUser.team || "A", yearVal, monthIndex, dateRange, concourse);
+            window._recentSlotMutations[mutationKey] = {
+                initialName: "",
+                expiresAt: Date.now() + 25000
+            };
             alert("ยกเลิกการจองพักร้อนเรียบร้อยแล้ว");
             notifyDataChanged();
             loadDashboardData();
@@ -2315,6 +2325,14 @@ function cancelBookingFromDashboard(btnElement, monthYearStr, dateRange, concour
 }
 
 window._calendarSlotsCache = window._calendarSlotsCache || {};
+window._recentSlotMutations = window._recentSlotMutations || {};
+
+function getSlotMutationKey(team, year, monthIndex, dateRange, concourse) {
+    const cleanDate = dateRange ? dateRange.toString().replace(/[^\d\-]/g, "") : "";
+    const cleanTeam = (team || "").toString().trim().toUpperCase();
+    const cleanConc = (concourse || "").toString().trim().toUpperCase();
+    return `${cleanTeam}_${year}_${monthIndex}_${cleanDate}_${cleanConc}`;
+}
 
 function loadVacationSlots() {
     if (!currentUser) return;
@@ -2378,6 +2396,27 @@ function loadVacationSlots() {
 function renderSlots(slots, monthIndex, year, preserveSelection = false) {
     if (document.getElementById("calendar-loading")) document.getElementById("calendar-loading").classList.add("hidden");
     if (document.getElementById("calendar-content")) document.getElementById("calendar-content").classList.remove("hidden");
+
+    // Enforce active optimistic mutations to prevent stale server responses from reverting user actions
+    if (window._recentSlotMutations && Array.isArray(slots)) {
+        const now = Date.now();
+        const activeTeam = (currentUser && currentUser.team) || "A";
+        slots.forEach(slot => {
+            const key = getSlotMutationKey(slot.team || activeTeam, slot.year || year, monthIndex, slot.dateRange, slot.concourse);
+            const mutation = window._recentSlotMutations[key];
+            if (mutation) {
+                if (now > mutation.expiresAt) {
+                    delete window._recentSlotMutations[key];
+                } else if (slot.initialName === mutation.initialName) {
+                    // Server has synchronized with user action
+                    delete window._recentSlotMutations[key];
+                } else {
+                    // Server is still stale! Lock to user action
+                    slot.initialName = mutation.initialName;
+                }
+            }
+        });
+    }
 
     slotsData = slots;
     const operatorList = document.getElementById("operator-slots-list");
@@ -2663,8 +2702,15 @@ function submitBookingData() {
                     `ระบบได้บันทึกการจองวันพักร้อนเรียบร้อยแล้ว<br>ชื่อย่อพนักงาน: <strong>${bookingInitial}</strong><br>ช่วงวัน: <strong>${selectedSlot.dateRange}</strong> Concourse ${selectedSlot.concourse}`;
             }
 
-            // Optimistic UI Update: immediately update local slotsData & re-render
+            // Optimistic UI Update with Mutation Lock
             const targetYear = selectedSlot.year || parseInt(document.getElementById("select-year").value);
+            const slotTeam = selectedSlot.team || (currentUser && currentUser.team) || "A";
+            const mutationKey = getSlotMutationKey(slotTeam, targetYear, monthIndex, selectedSlot.dateRange, selectedSlot.concourse);
+            window._recentSlotMutations[mutationKey] = {
+                initialName: bookingInitial,
+                expiresAt: Date.now() + 25000
+            };
+
             if (Array.isArray(slotsData)) {
                 const targetSlot = slotsData.find(s =>
                     s.dateRange === selectedSlot.dateRange &&
@@ -2760,8 +2806,15 @@ function cancelBookingData() {
                     `ยกเลิกรายการลาพักร้อนช่วงวัน <strong>${dateRange}</strong> เรียบร้อยแล้ว`;
             }
 
-            // Optimistic UI Update: immediately clear slot in slotsData & re-render
+            // Optimistic UI Update with Mutation Lock
             const targetYear = parseInt(year) || parseInt(document.getElementById("select-year").value);
+            const slotTeam = team || (currentUser && currentUser.team) || "A";
+            const mutationKey = getSlotMutationKey(slotTeam, targetYear, monthIndex, dateRange, concourse);
+            window._recentSlotMutations[mutationKey] = {
+                initialName: "",
+                expiresAt: Date.now() + 25000
+            };
+
             if (Array.isArray(slotsData)) {
                 const targetSlot = slotsData.find(s =>
                     s.dateRange === dateRange &&

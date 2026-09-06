@@ -288,18 +288,6 @@ function fetchBookings(position, team, monthIndex, year) {
   var targetMonthStr = isAllMonths ? "" : monthNames[Math.max(0, Math.min(11, monthIdx))].toUpperCase();
   var targetTeamStr = team ? team.toString().trim().toUpperCase() : "";
 
-  var cacheKey = "b_" + targetTeamStr + "_" + monthIdx + "_" + year;
-  var shouldCache = (targetTeamStr !== "ALL" && targetTeamStr !== "" && monthIdx >= 0);
-
-  if (shouldCache) {
-    try {
-      var cached = CacheService.getScriptCache().get(cacheKey);
-      if (cached) {
-        return JSON.parse(cached);
-      }
-    } catch(e) {}
-  }
-  
   var ss = getSpreadsheet("Vacation Table");
   var sheet = getSheetCaseInsensitive(ss, "Schedule 2027");
   if (!sheet) sheet = getSheetCaseInsensitive(ss, "ตารางการจองที่อยากให้โชว์ใน website");
@@ -353,12 +341,6 @@ function fetchBookings(position, team, monthIndex, year) {
         position: "Operator"
       });
     }
-  }
-
-  if (shouldCache) {
-    try {
-      CacheService.getScriptCache().put(cacheKey, JSON.stringify(slots), 30);
-    } catch(e) {}
   }
 
   return slots;
