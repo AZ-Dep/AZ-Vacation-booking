@@ -2654,7 +2654,7 @@ function submitBookingData() {
             }
             if (document.getElementById("success-message-text")) {
                 document.getElementById("success-message-text").innerHTML =
-                    `ระบบได้บันทึกการจองวันพักร้อนแทนพนักงานเรียบร้อยแล้ว<br>ชื่อย่อพนักงาน: <strong>${bookingInitial}</strong><br>ช่วงวัน: <strong>${selectedSlot.dateRange}</strong> Concourse ${selectedSlot.concourse}`;
+                    `ระบบได้บันทึกการจองวันพักร้อนเรียบร้อยแล้ว<br>ชื่อย่อพนักงาน: <strong>${bookingInitial}</strong><br>ช่วงวัน: <strong>${selectedSlot.dateRange}</strong> Concourse ${selectedSlot.concourse}`;
             }
             showSuccessPopup();
             notifyDataChanged();
