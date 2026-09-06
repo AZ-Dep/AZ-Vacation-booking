@@ -1101,6 +1101,7 @@ let isSimulationMode = false;
 let currentUser = null;
 let selectedSlot = null;
 let slotsData = [];
+let mockTodayDate = new Date();
 const SIM_BOOKINGS = {};
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -1115,8 +1116,12 @@ function initApp() {
 
     const todayStr = getLocalDateString(new Date());
     const mockInput = document.getElementById("mock-today");
-    if (mockInput) mockInput.value = todayStr;
-    mockTodayDate = new Date(todayStr);
+    if (mockInput) {
+        mockInput.value = todayStr;
+        mockInput.disabled = true;
+        mockInput.readOnly = true;
+    }
+    mockTodayDate = new Date();
 
     const yearSelect = document.getElementById("select-year");
     if (yearSelect) {
@@ -1188,11 +1193,8 @@ function setupEventHandlers() {
 
     const mockInput = document.getElementById("mock-today");
     if (mockInput) {
-        mockInput.addEventListener("change", (e) => {
-            mockTodayDate = new Date(e.target.value);
-            clearSelection();
-            loadVacationSlots();
-        });
+        mockInput.disabled = true;
+        mockInput.readOnly = true;
     }
 
     const selectMonth = document.getElementById("select-month");

@@ -4,3 +4,4 @@
 - [x] Sync app.html from app.js
 - [x] Verify locally using server.ps1 simulation
 - [x] Update walkthrough.md documentation
+- [x] Lock mock-today date widget to actual current date and disable date picker selection

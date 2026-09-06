@@ -417,6 +417,14 @@ body, html {
     box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
 }
 
+.mock-date-input:disabled {
+    cursor: not-allowed;
+    opacity: 0.85;
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
 /* User profile widget */
 .user-profile-widget {
     display: flex;
