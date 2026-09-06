@@ -253,10 +253,31 @@ function loginUser(initialName, employeeNo) {
 /**
  * 2. FETCH BOOKING SLOTS
  */
-function invalidateBookingsCache() {
+function invalidateBookingsCache(targetTeam, targetMonthIdx, targetYear) {
   try {
     var cache = CacheService.getScriptCache();
-    cache.removeAll(["b_A_0_2027", "b_A_1_2027", "b_A_2_2027", "b_A_-1_2027", "b_B_-1_2027", "b_C_-1_2027", "b_D_-1_2027", "b_E_-1_2027", "b_X_-1_2027"]);
+    if (targetTeam && targetYear !== undefined) {
+      var keysToRemove = [
+        "b_" + targetTeam + "_" + targetMonthIdx + "_" + targetYear,
+        "b_" + targetTeam + "_-1_" + targetYear,
+        "b_ALL_-1_" + targetYear
+      ];
+      cache.removeAll(keysToRemove);
+    }
+    var teams = ["A", "B", "C", "D", "E", "X"];
+    var years = [2026, 2027, 2028];
+    var allKeys = [];
+    for (var t = 0; t < teams.length; t++) {
+      for (var y = 0; y < years.length; y++) {
+        allKeys.push("b_" + teams[t] + "_-1_" + years[y]);
+        for (var m = 0; m < 12; m++) {
+          allKeys.push("b_" + teams[t] + "_" + m + "_" + years[y]);
+        }
+      }
+    }
+    for (var i = 0; i < allKeys.length; i += 50) {
+      cache.removeAll(allKeys.slice(i, i + 50));
+    }
   } catch(e) {}
 }
 
@@ -420,7 +441,7 @@ function submitBooking(position, team, monthIndex, year, dateRange, concourse, i
 
     sheet.getRange(rowNum, colNum).setValue(initialName);
     SpreadsheetApp.flush();
-    invalidateBookingsCache();
+    invalidateBookingsCache(targetTeamStr, safeMonthIdx, year);
 
     return { success: true };
   } finally {
@@ -553,7 +574,7 @@ function cancelBooking(position, team, monthIndex, year, dateRange, concourse, i
 
     sheet.getRange(rowNum, colNum).setValue("");
     SpreadsheetApp.flush();
-    invalidateBookingsCache();
+    invalidateBookingsCache(targetTeamStr, safeMonthIdx, year);
 
     return { success: true };
   } finally {
@@ -816,6 +837,7 @@ function clearAdminBookings(targetTeam, targetMonth) {
       }
     }
     SpreadsheetApp.flush();
+    invalidateBookingsCache();
     return { success: true, clearedCount: clearedCount };
   } catch (e) {
     return { success: false, error: e.message };
@@ -862,6 +884,7 @@ function clearAllAdminBookings() {
     }
 
     SpreadsheetApp.flush();
+    invalidateBookingsCache();
     return { success: true, count: count };
   } finally {
     if (hasLock) {
@@ -884,6 +907,7 @@ function clearAllTableBookings() {
     if (lastRow >= 2) {
       sheet.getRange(2, 5, lastRow - 1, 2).clearContent();
       SpreadsheetApp.flush();
+      invalidateBookingsCache();
     }
     return { success: true, count: lastRow - 1 };
   } catch (e) {

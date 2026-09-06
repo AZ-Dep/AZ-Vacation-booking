@@ -1368,12 +1368,12 @@ function callGasApi(functionName, args = []) {
                 submitBooking: ["position", "team", "monthIndex", "year", "dateRange", "concourse", "initialName", "employeeEnglish", "isBookedByAdmin"],
                 cancelBooking: ["position", "team", "monthIndex", "year", "dateRange", "concourse", "initialName", "rowNum"]
             };
-            const queryObj = { action: functionName };
+            const queryObj = { action: functionName, _t: Date.now() };
             if (paramKeys[functionName]) {
                 paramKeys[functionName].forEach((k, idx) => { queryObj[k] = args[idx]; });
             }
             const query = new URLSearchParams(queryObj).toString();
-            const fetchPromise = fetch(`${GAS_URL}?${query}`);
+            const fetchPromise = fetch(`${GAS_URL}?${query}`, { cache: "no-store" });
 
             fetchPromise
                 .then(res => res.json())
@@ -2320,7 +2320,10 @@ function loadVacationSlots() {
 
     const monthIndex = parseInt(document.getElementById("select-month").value);
     const year = parseInt(document.getElementById("select-year").value);
-    const cacheKey = `${currentUser.team}_${year}_${monthIndex}`;
+    const adminTeamSelect = document.getElementById("calendar-admin-team-select");
+    const isAdminUser = currentUser.position === "Admin" || currentUser.isAdmin === true || currentUser.role === "Admin";
+    const activeTeam = (isAdminUser && adminTeamSelect && adminTeamSelect.value) ? adminTeamSelect.value : (currentUser.team || "A");
+    const cacheKey = `${activeTeam}_${year}_${monthIndex}`;
 
     // Save expected key to avoid race conditions
     const expectedKey = cacheKey;
@@ -2328,18 +2331,20 @@ function loadVacationSlots() {
 
     if (document.getElementById("calendar-title-display")) {
         document.getElementById("calendar-title-display").textContent =
-            `ตารางพักร้อนล่วงหน้า ทีม ${currentUser.team} - ${MONTHS_TH[monthIndex]} ${year}`;
+            `ตารางพักร้อนล่วงหน้า ทีม ${activeTeam} - ${MONTHS_TH[monthIndex]} ${year}`;
     }
 
     const cachedData = window._calendarSlotsCache[cacheKey];
     if (cachedData && Array.isArray(cachedData)) {
         renderSlots(cachedData, monthIndex, year, true);
+    } else if (slotsData && Array.isArray(slotsData) && slotsData.length > 0) {
+        // Keep current view visible smoothly while fetching latest in background
     } else {
         if (document.getElementById("calendar-loading")) document.getElementById("calendar-loading").classList.remove("hidden");
         if (document.getElementById("calendar-content")) document.getElementById("calendar-content").classList.add("hidden");
     }
 
-    callGasApi("fetchBookings", [currentUser.position, currentUser.team, monthIndex, year])
+    callGasApi("fetchBookings", [currentUser.position, activeTeam, monthIndex, year])
         .then((result) => {
             // Discard response if user changed selection during network lag
             if (window._expectedCalendarKey !== expectedKey) {
@@ -2656,6 +2661,21 @@ function submitBookingData() {
                 document.getElementById("success-message-text").innerHTML =
                     `ระบบได้บันทึกการจองวันพักร้อนเรียบร้อยแล้ว<br>ชื่อย่อพนักงาน: <strong>${bookingInitial}</strong><br>ช่วงวัน: <strong>${selectedSlot.dateRange}</strong> Concourse ${selectedSlot.concourse}`;
             }
+
+            // Optimistic UI Update: immediately update local slotsData & re-render
+            const targetYear = selectedSlot.year || parseInt(document.getElementById("select-year").value);
+            if (Array.isArray(slotsData)) {
+                const targetSlot = slotsData.find(s =>
+                    s.dateRange === selectedSlot.dateRange &&
+                    s.concourse === selectedSlot.concourse &&
+                    (!targetYear || s.year == targetYear)
+                );
+                if (targetSlot) {
+                    targetSlot.initialName = bookingInitial;
+                }
+                renderSlots(slotsData, monthIndex, targetYear, true);
+            }
+
             showSuccessPopup();
             notifyDataChanged();
             loadVacationSlots();
@@ -2738,6 +2758,21 @@ function cancelBookingData() {
                 document.getElementById("success-message-text").innerHTML =
                     `ยกเลิกรายการลาพักร้อนช่วงวัน <strong>${dateRange}</strong> เรียบร้อยแล้ว`;
             }
+
+            // Optimistic UI Update: immediately clear slot in slotsData & re-render
+            const targetYear = parseInt(year) || parseInt(document.getElementById("select-year").value);
+            if (Array.isArray(slotsData)) {
+                const targetSlot = slotsData.find(s =>
+                    s.dateRange === dateRange &&
+                    s.concourse === concourse &&
+                    (!targetYear || s.year == targetYear)
+                );
+                if (targetSlot) {
+                    targetSlot.initialName = "";
+                }
+                renderSlots(slotsData, monthIndex, targetYear, true);
+            }
+
             showSuccessPopup();
             notifyDataChanged();
             loadVacationSlots();
