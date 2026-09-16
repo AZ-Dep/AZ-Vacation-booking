@@ -5,3 +5,5 @@
 - [x] Verify locally using server.ps1 simulation
 - [x] Update walkthrough.md documentation
 - [x] Lock mock-today date widget to actual current date and disable date picker selection
+- [x] Fix immediate display of booked employee name in calendar (server-side cache invalidation, fetch cache-buster, optimistic UI update)
+- [x] Implement Client-Side Mutation Lock (_recentSlotMutations) and remove CacheService from fetchBookings in Code.gs
